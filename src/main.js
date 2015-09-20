@@ -1,5 +1,5 @@
 import Net from './Network.js';
-
+import _Net from './_Network.js';
 let networkParams  = {
     topology: [2,4,1],
     alpha: 0.5,
@@ -8,6 +8,8 @@ let networkParams  = {
 }
 let network = new Net(networkParams);
 
+
+_Net(networkParams)
 let table = [{
     input: [0,0],
     output: [0]

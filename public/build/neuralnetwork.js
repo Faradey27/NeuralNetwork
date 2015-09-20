@@ -52,6 +52,10 @@
 
 	var _NetworkJs2 = _interopRequireDefault(_NetworkJs);
 
+	var _NetworkJs3 = __webpack_require__(6);
+
+	var _NetworkJs4 = _interopRequireDefault(_NetworkJs3);
+
 	var networkParams = {
 	    topology: [2, 4, 1],
 	    alpha: 0.5,
@@ -60,6 +64,7 @@
 	};
 	var network = new _NetworkJs2['default'](networkParams);
 
+	(0, _NetworkJs4['default'])(networkParams);
 	var table = [{
 	    input: [0, 0],
 	    output: [0]
@@ -485,6 +490,101 @@
 	})();
 
 	exports["default"] = Layer;
+	module.exports = exports["default"];
+
+/***/ },
+/* 6 */
+/***/ function(module, exports) {
+
+	//import network from './Network/network.json';
+
+	"use strict";
+
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	var network = {
+	    "eta": 0.15,
+	    "alpha": 0.5,
+	    "error": 0,
+	    "recentAverageError": 0,
+	    "recentAverageSmoothingFactor": 0,
+	    "layers": []
+	};
+
+	function createNetwork(struct) {
+	    network.error = struct.error || 0;
+	    network.recentAverageError = struct.recentAverageError || 0;
+	    network.recentAverageSmoothingFactor = struct.recentAverageSmoothingFactor || 0;
+
+	    var topology = struct.topology;
+	    var numLayers = topology.length;
+	    for (var layerNum = 0; layerNum < numLayers; ++layerNum) {
+	        var layer = [];
+	        network.layers.push(layer);
+	        var numOutputs = getNumOfOutputs(layerNum, topology);
+	        var lastLayer = getLast(network.layers);
+	        for (var neuronNum = 0; neuronNum <= topology[layerNum]; ++neuronNum) {
+	            var neuron = {
+	                eta: struct.eta || 0.15,
+	                alpha: struct.alpha || 0.5,
+	                outputVal: 0,
+	                gradient: 0,
+	                index: neuronNum,
+	                outputWeights: getOutputWeights()
+	            };
+	            lastLayer.push(neuron);
+	        }
+	        getLast(lastLayer).outputVal = 1;
+	    }
+	    console.info(network);
+	    return network;
+	}
+
+	function getNumOfOutputs(layerNum, topology) {
+	    return layerNum == topology.length - 1 ? 0 : topology[layerNum + 1];
+	}
+
+	function getLast(arr) {
+	    return arr[arr.length - 1];
+	}
+
+	function getFirst(arr) {
+	    return arr[0];
+	}
+
+	function getOutputWeights(num) {
+	    var res = undefined;
+	    for (var i = 0; i < num; i++) {
+	        res.push({
+	            weight: Math.random(),
+	            deltaWeight: 0
+	        });
+	    }
+	    return res;
+	}
+
+	function feedForward(inputVals, network) {
+	    var layers = network.layers;
+
+	    for (var i = 0; i < inputVals.length; ++i) {
+	        getFirst(layers)[i].outputVal = inputVals[i];
+	    }
+
+	    /*for (let layerNum = 1; layerNum < this.layers.length(); ++layerNum) {
+	        let prevLayer = this.layers.getLayerByIndex(layerNum - 1);
+	        for (let n = 0; n < this.layers.getLayerByIndex(layerNum).length() - 1; ++n) {
+	            this.layers.getLayerByIndex(layerNum).getNeuronByIndex(n).feedForward(prevLayer);
+	        }
+	    }*/
+	}
+
+	var x = {
+	    create: createNetwork,
+	    feedForward: feedForward
+	};
+
+	exports["default"] = createNetwork;
 	module.exports = exports["default"];
 
 /***/ }
