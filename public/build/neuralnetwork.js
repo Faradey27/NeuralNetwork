@@ -64,7 +64,9 @@
 	};
 	var network = new _NetworkJs2['default'](networkParams);
 
-	(0, _NetworkJs4['default'])(networkParams);
+	var net = _NetworkJs4['default'].create(networkParams);
+	console.info(net);
+
 	var table = [{
 	    input: [0, 0],
 	    output: [0]
@@ -97,9 +99,28 @@
 	    console.info(network.getRecentAverageError(), table.length);
 	}
 
-	learn();
+	function learn2() {
+	    var tableLength = table.length;
+	    var t1 = new Date();
+	    for (var i = 0; i < 50000; i++) {
+	        var index = Math.floor(Math.random() * tableLength);
+	        table.push(table[index]);
+	    }
+	    console.info('create lessons', new Date() - t1);
+	    t1 = new Date();
+	    for (var i = 0; i < table.length; i++) {
+	        var data = table[i];
+	        _NetworkJs4['default'].feedForward(data.input, net);
+	        _NetworkJs4['default'].backProp(data.output, net);
+	    }
+	    console.info('learn', new Date() - t1);
+	    console.info(net.recentAverageError, table.length);
+	}
 
-	window.network = network;
+	learn();
+	learn2();
+
+	window.network = _NetworkJs4['default'];
 
 /***/ },
 /* 1 */
@@ -146,11 +167,9 @@
 	            var lastLayer = this.layers.getLast();
 	            for (var neuronNum = 0; neuronNum <= topology[layerNum]; ++neuronNum) {
 	                lastLayer.createNeuron(new _NetworkNeuronJs2['default'](numOutputs, neuronNum, struct.eta, struct.alpha));
-	                console.info('made neuron');
 	            }
 	            lastLayer.getLast().setOutputVal(1);
 	        }
-	        console.info(this.layers);
 	    }
 
 	    _createClass(Net, [{
@@ -531,13 +550,12 @@
 	                outputVal: 0,
 	                gradient: 0,
 	                index: neuronNum,
-	                outputWeights: getOutputWeights()
+	                outputWeights: getOutputWeights(numOutputs)
 	            };
 	            lastLayer.push(neuron);
 	        }
 	        getLast(lastLayer).outputVal = 1;
 	    }
-	    console.info(network);
 	    return network;
 	}
 
@@ -554,7 +572,7 @@
 	}
 
 	function getOutputWeights(num) {
-	    var res = undefined;
+	    var res = [];
 	    for (var i = 0; i < num; i++) {
 	        res.push({
 	            weight: Math.random(),
@@ -571,20 +589,105 @@
 	        getFirst(layers)[i].outputVal = inputVals[i];
 	    }
 
-	    /*for (let layerNum = 1; layerNum < this.layers.length(); ++layerNum) {
-	        let prevLayer = this.layers.getLayerByIndex(layerNum - 1);
-	        for (let n = 0; n < this.layers.getLayerByIndex(layerNum).length() - 1; ++n) {
-	            this.layers.getLayerByIndex(layerNum).getNeuronByIndex(n).feedForward(prevLayer);
+	    for (var layerNum = 1; layerNum < layers.length; ++layerNum) {
+	        var prevLayer = layers[layerNum - 1];
+	        for (var n = 0; n < layers[layerNum].length - 1; ++n) {
+	            feedForwardNeuron(layers[layerNum][n], prevLayer);
 	        }
-	    }*/
+	    }
+	}
+
+	function transferFunction(x) {
+	    return Math.tanh(x);
+	}
+
+	function feedForwardNeuron(neuron, prevLayer) {
+	    var sum = 0;
+	    for (var n = 0; n < prevLayer.length; ++n) {
+	        sum += prevLayer[n].outputVal * prevLayer[n].outputWeights[neuron.index].weight;
+	    }
+
+	    neuron.outputVal = transferFunction(sum);
+	}
+
+	function transferFunctionDerivative(x) {
+	    return 1 - x * x;
+	}
+
+	function calcOutputGradients(neuron, targetVal) {
+	    var delta = targetVal - neuron.outputVal;
+	    neuron.gradient = delta * transferFunctionDerivative(neuron.outputVal);
+	}
+
+	function sumDOW(neuron, nextLayer) {
+	    var sum = 0.0;
+
+	    for (var n = 0; n < nextLayer.length - 1; ++n) {
+	        sum += neuron.outputWeights[n].weight * nextLayer[n].gradient;
+	    }
+
+	    return sum;
+	}
+
+	function calcHiddenGradients(neuron, nextLayer) {
+	    var dow = sumDOW(neuron, nextLayer);
+	    neuron.gradient = dow * transferFunctionDerivative(neuron.outputVal);
+	}
+
+	function updateInputWeights(neuron, prevLayer) {
+	    for (var n = 0; n < prevLayer.length; ++n) {
+	        var neuronFromPrevLayer = prevLayer[n];
+	        var oldDeltaWeight = neuronFromPrevLayer.outputWeights[neuron.index].deltaWeight;
+	        var newDeltaWeight = neuron.eta * neuronFromPrevLayer.outputVal * neuron.gradient + neuron.alpha * oldDeltaWeight;
+	        neuronFromPrevLayer.outputWeights[neuron.index].deltaWeight = newDeltaWeight;
+	        neuronFromPrevLayer.outputWeights[neuron.index].weight += newDeltaWeight;
+	    }
+	}
+
+	function backProp(targetVals, network) {
+	    var layers = network.layers;
+	    var outputLayer = getLast(layers);
+	    network.error = 0;
+
+	    for (var n = 0; n < outputLayer.length - 1; ++n) {
+	        var delta = targetVals[n] - outputLayer[n].outputVal;
+	        network.error += delta * delta;
+	    }
+
+	    network.error /= outputLayer.length - 1;
+	    network.error = Math.sqrt(network.error);
+
+	    network.recentAverageError = (network.recentAverageError * network.recentAverageSmoothingFactor + network.error) / (network.recentAverageSmoothingFactor + 1.0);
+
+	    for (var n = 0; n < outputLayer.length - 1; ++n) {
+	        calcOutputGradients(outputLayer[n], targetVals[n]);
+	    }
+
+	    for (var layerNum = layers.length - 2; layerNum > 0; --layerNum) {
+	        var hiddenLayer = layers[layerNum];
+	        var nextLayer = layers[layerNum + 1];
+	        for (var n = 0; n < hiddenLayer.length; ++n) {
+	            calcHiddenGradients(hiddenLayer[n], nextLayer);
+	        }
+	    }
+
+	    for (var layerNum = layers.length - 1; layerNum > 0; --layerNum) {
+	        var layer = layers[layerNum];
+	        var prevLayer = layers[layerNum - 1];
+
+	        for (var n = 0; n < layer.length - 1; ++n) {
+	            updateInputWeights(layer[n], prevLayer);
+	        }
+	    }
 	}
 
 	var x = {
 	    create: createNetwork,
-	    feedForward: feedForward
+	    feedForward: feedForward,
+	    backProp: backProp
 	};
 
-	exports["default"] = createNetwork;
+	exports["default"] = x;
 	module.exports = exports["default"];
 
 /***/ }

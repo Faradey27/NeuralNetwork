@@ -17,11 +17,9 @@ class Net {
             let lastLayer = this.layers.getLast();
             for (let neuronNum = 0; neuronNum <= topology[layerNum]; ++neuronNum) {
                 lastLayer.createNeuron(new Neuron(numOutputs, neuronNum, struct.eta, struct.alpha));
-                console.info('made neuron')
             }
             lastLayer.getLast().setOutputVal(1);
         }
-        console.info(this.layers)
     }
 
     getResults() {

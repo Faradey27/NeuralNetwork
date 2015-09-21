@@ -8,8 +8,10 @@ let networkParams  = {
 }
 let network = new Net(networkParams);
 
+let net = _Net.create(networkParams);
+console.info(net)
 
-_Net(networkParams)
+
 let table = [{
     input: [0,0],
     output: [0]
@@ -42,9 +44,28 @@ function learn() {
     console.info(network.getRecentAverageError(), table.length);
 }
 
+function learn2() {
+    let tableLength = table.length;
+    var t1 = new Date();
+    for (let i = 0; i < 50000; i++) {
+        let index = Math.floor(Math.random() * tableLength);
+        table.push(table[index]);
+    }
+    console.info('create lessons',(new Date - t1));
+    t1 = new Date();
+    for (let i = 0; i < table.length; i++) {
+        let data = table[i];
+        _Net.feedForward(data.input, net);
+        _Net.backProp(data.output, net);
+    }
+    console.info('learn',(new Date - t1));
+    console.info(net.recentAverageError, table.length);
+}
+
 learn();
+learn2();
 
 
 
-window.network = network;
+window.network = _Net;
 
