@@ -1,9 +1,12 @@
 var path = require('path');
   module.exports = {
-    entry: './src/main.js',
+    entry: {
+        test: './src/test.js',
+        net: './src/net.js'
+    },
     output: {
       path: __dirname + '/public/build',
-      filename: 'neuralnetwork.js',
+      filename: '[name]neuralnetwork.js',
       publicPath: './public'
     },
     module: {
